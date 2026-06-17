@@ -19,40 +19,56 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
-const chartData = [
-  { protocol: "TCP", packets: 273, fill: "var(--chart-1)" },
-  { protocol: "UDP", packets: 42, fill: "var(--chart-2)" },
-  { protocol: "ICMP", packets: 3, fill: "var(--chart-3)" },
-  { protocol: "IPv6", packets: 17, fill: "var(--chart-4)" },
-]
+import { useEffect, useState } from "react"
+import { getProtocols } from "@/lib/api"
 
-const chartConfig = {
-  packets: {
-    label: "Packets",
-  },
-  TCP: {
-    label: "TCP",
-    color: "var(--chart-1)",
-  },
-  UDP: {
-    label: "UDP",
-    color: "var(--chart-2)",
-  },
-  ICMP: {
-    label: "ICMP",
-    color: "var(--chart-3)",
-  },
-  IPv6: {
-    label: "IPv6",
-    color: "var(--chart-4)",
-  },
-} satisfies ChartConfig
+const chartColors = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+]
 
 const ACTIVE_INDEX = 0
 
 export function ProtocolDistribution() {
-  const totalPackets = chartData.reduce(
-    (acc, curr) => acc + curr.packets,
+  const [chartData, setChartData] = useState<{ protocol: string; percentage: number; fill: string }[]>([])
+
+  const chartConfig = {
+    percentage: {
+      label: "Percentage",
+    },
+  } satisfies ChartConfig
+
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchProtocols = async () => {
+      try {
+        const data = await getProtocols();
+        if (mounted && data) {
+          const entries = Object.entries(data).map(([protocol, stats]: [string, any], index) => ({
+            protocol,
+            percentage: stats.percentage || 0,
+            fill: chartColors[index % chartColors.length],
+          }));
+          setChartData(entries);
+        }
+      } catch (error) {
+        console.error("Error fetching protocols:", error);
+      }
+    };
+
+    fetchProtocols();
+    const interval = setInterval(fetchProtocols, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+  
+  const totalPercentage = chartData.reduce(
+    (acc, curr) => acc + curr.percentage,
     0
   )
 
@@ -78,8 +94,9 @@ export function ProtocolDistribution() {
 
             <Pie
               data={chartData}
-              dataKey="packets"
+              dataKey="percentage"
               nameKey="protocol"
+              fill="var(--chart-1)"
               innerRadius={70}
               outerRadius={100}
               strokeWidth={5}
@@ -120,7 +137,7 @@ export function ProtocolDistribution() {
                           y={viewBox.cy}
                           className="fill-foreground text-3xl font-bold"
                         >
-                          {totalPackets}
+                          {totalPercentage.toFixed(1)}%
                         </tspan>
 
                         <tspan
@@ -128,7 +145,7 @@ export function ProtocolDistribution() {
                           y={(viewBox.cy || 0) + 24}
                           className="fill-muted-foreground"
                         >
-                          Packets
+                          Coverage
                         </tspan>
                       </text>
                     )

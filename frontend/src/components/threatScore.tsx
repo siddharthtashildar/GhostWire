@@ -66,7 +66,7 @@ export function ThreatScoreCard() {
       <CardContent className="flex-1 pb-0">
         <ChartContainer
           config={chartConfig}
-          className="mx-auto aspect-square h-99"
+          className="mx-auto aspect-square h-98"
         >
           <RadialBarChart
             data={chartData}

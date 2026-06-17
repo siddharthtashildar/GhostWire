@@ -2,6 +2,9 @@ import { ThemeProvider } from "@/components/provider/themeProvider";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import StarBackground from "@/components/star-background";
+
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,8 +28,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body  className={`${geistSans.variable} ${geistMono.variable} ${geistSans.className} min-h-full flex flex-col`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} ${geistSans.className} min-h-full flex flex-col`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <StarBackground />
           {children}
         </ThemeProvider></body>
     </html>

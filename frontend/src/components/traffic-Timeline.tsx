@@ -23,53 +23,78 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
-const chartData = [
-  { time: "10:00", packets: 42, bandwidth: 1.2 },
-  { time: "10:01", packets: 55, bandwidth: 1.8 },
-  { time: "10:02", packets: 37, bandwidth: 0.9 },
-  { time: "10:03", packets: 88, bandwidth: 2.7 },
-  { time: "10:04", packets: 102, bandwidth: 3.4 },
-  { time: "10:05", packets: 65, bandwidth: 2.1 },
-  { time: "10:06", packets: 121, bandwidth: 4.2 },
-  { time: "10:07", packets: 93, bandwidth: 3.1 },
-  { time: "10:08", packets: 48, bandwidth: 1.5 },
-  { time: "10:09", packets: 134, bandwidth: 5.3 },
-  { time: "10:10", packets: 82, bandwidth: 2.8 },
-  { time: "10:11", packets: 155, bandwidth: 6.2 },
-  { time: "10:12", packets: 94, bandwidth: 3.7 },
-  { time: "10:13", packets: 73, bandwidth: 2.5 },
-  { time: "10:14", packets: 189, bandwidth: 7.1 },
-  { time: "10:15", packets: 115, bandwidth: 4.4 },
-]
+import { useEffect, useState } from "react";
+import { getPacketCount } from "@/lib/api";
+
+interface TimelineData {
+  time: string;
+  packets: number;
+}
 
 const chartConfig = {
   packets: {
-    label: "Packets/sec",
+    label: "Packets/min",
     color: "var(--chart-1)",
-  },
-  bandwidth: {
-    label: "Bandwidth MB/s",
-    color: "var(--chart-2)",
   },
 } satisfies ChartConfig
 
 export function TrafficTimeline() {
-  const [activeChart, setActiveChart] =
-    React.useState<"packets" | "bandwidth">(
-      "packets"
-    )
+  const [chartData, setChartData] = React.useState<TimelineData[]>([])
+  const [timelineWindow, setTimelineWindow] = React.useState<Array<{ timestamp: number; count: number }>>([])
+  const [lastPacketCount, setLastPacketCount] = React.useState(0)
 
-  const stats = React.useMemo(
-    () => ({
-      packets: Math.max(
-        ...chartData.map((d) => d.packets)
-      ),
-      bandwidth: Math.max(
-        ...chartData.map((d) => d.bandwidth)
-      ),
-    }),
-    []
-  )
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchTraffic = async () => {
+      try {
+        const data = await getPacketCount();
+        if (mounted) {
+          const newCount = data.packet_count ?? 0;
+          const now = Date.now();
+          const timeStr = new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+          setTimelineWindow((prev) => {
+            const updated = [...prev, { timestamp: now, count: newCount }];
+            const cutoff = now - 15 * 60 * 1000; // 15 minutes
+            const filtered = updated.filter((d) => d.timestamp > cutoff);
+
+            const grouped = filtered.reduce<{ [key: string]: number[] }>((acc, d) => {
+              const ts = new Date(d.timestamp);
+              const key = ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(d.count);
+              return acc;
+            }, {});
+
+            const timeline = Object.entries(grouped)
+              .map(([time, counts]) => ({
+                time,
+                packets: Math.max(...counts),
+              }))
+              .slice(-20);
+
+            if (mounted) {
+              setChartData(timeline);
+            }
+
+            return filtered;
+          });
+
+          setLastPacketCount(newCount);
+        }
+      } catch (error) {
+        console.error("Error fetching traffic data:", error);
+      }
+    };
+
+    fetchTraffic();
+    const interval = setInterval(fetchTraffic, 3000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <Card className="p-0 rounded-0">
@@ -82,40 +107,12 @@ export function TrafficTimeline() {
             last 15 minutes
           </CardDescription>
         </div>
-
-        <div className="flex">
-          {(
-            ["packets", "bandwidth"] as const
-          ).map((key) => (
-            <button
-              key={key}
-              data-active={
-                activeChart === key
-              }
-              onClick={() =>
-                setActiveChart(key)
-              }
-              className="relative z-30 flex flex-1 flex-col w-full justify-center gap-1 border-t text-left even:border-l data-[active=true]:bg-muted/50 sm:border-t-0 sm:border-l sm:px-8 sm:py-6"
-            >
-              <span className="text-xs text-muted-foreground px-2">
-                {
-                  chartConfig[key]
-                    .label
-                }
-              </span>
-
-              <span className="text-lg font-bold sm:text-3xl">
-                {stats[key]}
-              </span>
-            </button>
-          ))}
-        </div>
       </CardHeader>
 
-      <CardContent className="px-2 sm:p-6">
+      <CardContent className="p-4">
         <ChartContainer
           config={chartConfig}
-          className="aspect-auto h-60 w-full"
+          className="h-[300px] w-full"
         >
           <LineChart
             accessibilityLayer
@@ -123,31 +120,29 @@ export function TrafficTimeline() {
             margin={{
               left: 12,
               right: 12,
+              top: 12,
+              bottom: 12,
             }}
           >
-            <CartesianGrid
-              vertical={false}
-            />
-
+            <CartesianGrid vertical={false} />
             <XAxis
               dataKey="time"
               tickLine={false}
               axisLine={false}
               tickMargin={8}
+              tick={{ fontSize: 12 }}
             />
-
             <ChartTooltip
-              content={
-                <ChartTooltipContent />
-              }
+              cursor={false}
+              content={<ChartTooltipContent hideLabel />}
             />
-
             <Line
               type="monotone"
-              dataKey={activeChart}
-              stroke={`var(--color-${activeChart})`}
-              strokeWidth={2.5}
+              dataKey="packets"
+              stroke="var(--chart-1)"
+              strokeWidth={2}
               dot={false}
+              isAnimationActive={false}
             />
           </LineChart>
         </ChartContainer>

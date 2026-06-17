@@ -11,19 +11,31 @@ from packet_capture.analyzer import PacketAnalyzer
 from packet_capture.sniffer import PacketSniffer
 from packet_capture.statistics import NetworkStatistics
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="GhostWire", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Global shared state
 analyzer = PacketAnalyzer()
-capture_thread = None
-is_capturing = False
+current_sniffer: PacketSniffer | None = None
+capture_lock = threading.Lock()
 
 
 # ── Request / Response models ──────────────────────────────────────────────
 
 class CaptureConfig(BaseModel):
     interface: Optional[str] = None   # e.g. "eth0", None = default
-    packet_count: int = 100
+    packet_count: int = 0
     timeout: Optional[int] = None     # seconds
 
 class LoadPcapRequest(BaseModel):
@@ -35,24 +47,27 @@ class LoadPcapRequest(BaseModel):
 @app.post("/capture/start")
 def start_capture(config: CaptureConfig, background_tasks: BackgroundTasks):
     """Start a live packet capture in the background."""
-    global is_capturing, analyzer
+    global current_sniffer
 
-    if is_capturing:
-        raise HTTPException(status_code=409, detail="Capture already running")
+    with capture_lock:
+        if current_sniffer is not None and current_sniffer.is_running():
+            raise HTTPException(status_code=409, detail="Capture already running")
 
-    analyzer.clear()        # reset previous session
-    is_capturing = True
-
-    def run():
-        global is_capturing
-        sniffer = PacketSniffer(
+        analyzer.clear()        # reset previous session
+        current_sniffer = PacketSniffer(
             interface=config.interface,
             packet_count=config.packet_count,
             timeout=config.timeout,
         )
-        sniffer.analyzer = analyzer
-        sniffer.start()
-        is_capturing = False
+        current_sniffer.analyzer = analyzer
+
+    def run():
+        global current_sniffer
+        try:
+            current_sniffer.start()
+        finally:
+            with capture_lock:
+                current_sniffer = None
 
     background_tasks.add_task(run)
     return {"status": "started", "config": config.model_dump()}
@@ -60,8 +75,21 @@ def start_capture(config: CaptureConfig, background_tasks: BackgroundTasks):
 
 @app.post("/capture/stop")
 def stop_capture():
-    """Check capture status (Scapy stops automatically at packet_count)."""
-    return {"is_capturing": is_capturing, "packets_so_far": analyzer.get_packet_count()}
+    """Stop live capture if it is running."""
+    with capture_lock:
+        if current_sniffer is None or not current_sniffer.is_running():
+            return {"status": "not_running", "packets_so_far": analyzer.get_packet_count()}
+        current_sniffer.stop()
+
+    return {"status": "stopping", "packets_so_far": analyzer.get_packet_count()}
+
+
+@app.get("/capture/status")
+def capture_status():
+    """Return whether live capture is currently running and the current packet count."""
+    with capture_lock:
+        running = bool(current_sniffer and current_sniffer.is_running())
+    return {"is_capturing": running, "packets_so_far": analyzer.get_packet_count()}
 
 
 @app.post("/capture/load")
@@ -94,14 +122,14 @@ def protocol_stats():
 
 
 @app.get("/stats/top-ports")
-def top_ports(n: int = 10, direction: str = "both"):
+def top_ports(n: int = 5, direction: str = "both"):
     """Top N most-seen ports. direction: src | dst | both"""
     stats = NetworkStatistics(analyzer)
     return stats.get_top_ports(n=n, direction=direction)
 
 
 @app.get("/stats/top-ips")
-def top_ips(n: int = 10, direction: str = "src"):
+def top_ips(n: int = 5, direction: str = "src"):
     """Top N most-seen IPs. direction: src | dst | both"""
     stats = NetworkStatistics(analyzer)
     return stats.get_top_ips(n=n, direction=direction)
@@ -146,4 +174,11 @@ def clear_records():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "is_capturing": is_capturing}
+    with capture_lock:
+        is_capturing = bool(current_sniffer and current_sniffer.is_running())
+
+    return {
+        "status": "ok",
+        "is_capturing": is_capturing,
+        "packets_so_far": analyzer.get_packet_count(),
+    }

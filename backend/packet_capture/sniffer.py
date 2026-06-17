@@ -3,7 +3,7 @@ sniffer.py — Packet capture module using Scapy.
 Captures live packets and passes them to the Analyzer.
 """
 
-from scapy.all import sniff, wrpcap, rdpcap
+from scapy.all import AsyncSniffer, wrpcap, rdpcap
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from .analyzer import PacketAnalyzer
 
@@ -23,6 +23,7 @@ class PacketSniffer:
         self.packet_count = packet_count
         self.timeout = timeout
         self.analyzer = PacketAnalyzer()
+        self._sniffer: AsyncSniffer | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -38,16 +39,31 @@ class PacketSniffer:
         print(f"[*] Starting capture on interface: {self.interface or 'default'}")
         print(f"[*] Capturing {self.packet_count or 'unlimited'} packets …")
 
-        sniff(
+        self._sniffer = AsyncSniffer(
             iface=self.interface,
             count=self.packet_count,
             timeout=self.timeout,
             prn=self._process_packet,
             store=False,           # don't keep raw packets in memory
         )
+        self._sniffer.start()
+        self._sniffer.join()
 
         print(f"[*] Capture complete. {self.analyzer.get_packet_count()} packets recorded.")
         return self.analyzer
+
+    def stop(self) -> None:
+        """Stop an active packet capture."""
+        if self._sniffer is None:
+            return
+        try:
+            self._sniffer.stop()
+        finally:
+            self._sniffer.join(timeout=2)
+
+    def is_running(self) -> bool:
+        """Return True when sniffing is currently in progress."""
+        return bool(self._sniffer and self._sniffer.running)
 
     def load_pcap(self, filepath: str) -> "PacketAnalyzer":
         """
