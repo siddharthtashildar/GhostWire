@@ -5,7 +5,7 @@ Captures live packets and passes them to the Analyzer.
 
 from scapy.all import sniff, wrpcap, rdpcap
 from scapy.layers.inet import IP, TCP, UDP, ICMP
-from analyzer import PacketAnalyzer
+from .analyzer import PacketAnalyzer
 
 
 class PacketSniffer:

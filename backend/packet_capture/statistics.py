@@ -20,7 +20,7 @@ from collections import Counter, defaultdict
 from typing import TYPE_CHECKING, Dict, List, Optional
 
 if TYPE_CHECKING:
-    from analyzer import PacketAnalyzer
+    from .analyzer import PacketAnalyzer
 
 
 class NetworkStatistics:
