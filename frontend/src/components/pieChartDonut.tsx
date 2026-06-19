@@ -159,7 +159,7 @@ export function ProtocolDistribution() {
 
       <CardFooter className="flex-col gap-2 text-sm">
         <div className="font-medium">
-          TCP dominates current network traffic
+          {chartData.length > 0 ? chartData[0].protocol : "N/A"} dominates current network traffic
         </div>
 
       </CardFooter>

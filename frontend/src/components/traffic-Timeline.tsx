@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 import {
@@ -23,89 +23,52 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 
-import { useEffect, useState } from "react";
-import { getPacketCount } from "@/lib/api";
-
 interface TimelineData {
   time: string;
-  packets: number;
+  pps: number;
+}
+
+interface BandwidthStats {
+  total_bytes: number;
+  total_kb: number;
+  total_mb: number;
+  avg_packet_size: number;
+  max_packet_size: number;
+  min_packet_size: number;
+}
+
+interface TrafficTimelineProps {
+  data: TimelineData[];
+  packetsPerSecond: number;
+  bandwidth?: BandwidthStats | null;
 }
 
 const chartConfig = {
-  packets: {
-    label: "Packets/min",
+  pps: {
+    label: "Packets/sec",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig
 
-export function TrafficTimeline() {
-  const [chartData, setChartData] = React.useState<TimelineData[]>([])
-  const [timelineWindow, setTimelineWindow] = React.useState<Array<{ timestamp: number; count: number }>>([])
-  const [lastPacketCount, setLastPacketCount] = React.useState(0)
-
-  useEffect(() => {
-    let mounted = true;
-
-    const fetchTraffic = async () => {
-      try {
-        const data = await getPacketCount();
-        if (mounted) {
-          const newCount = data.packet_count ?? 0;
-          const now = Date.now();
-          const timeStr = new Date(now).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-
-          setTimelineWindow((prev) => {
-            const updated = [...prev, { timestamp: now, count: newCount }];
-            const cutoff = now - 15 * 60 * 1000; // 15 minutes
-            const filtered = updated.filter((d) => d.timestamp > cutoff);
-
-            const grouped = filtered.reduce<{ [key: string]: number[] }>((acc, d) => {
-              const ts = new Date(d.timestamp);
-              const key = ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-              if (!acc[key]) acc[key] = [];
-              acc[key].push(d.count);
-              return acc;
-            }, {});
-
-            const timeline = Object.entries(grouped)
-              .map(([time, counts]) => ({
-                time,
-                packets: Math.max(...counts),
-              }))
-              .slice(-20);
-
-            if (mounted) {
-              setChartData(timeline);
-            }
-
-            return filtered;
-          });
-
-          setLastPacketCount(newCount);
-        }
-      } catch (error) {
-        console.error("Error fetching traffic data:", error);
-      }
-    };
-
-    fetchTraffic();
-    const interval = setInterval(fetchTraffic, 3000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
-  }, []);
+export function TrafficTimeline({ data, packetsPerSecond, bandwidth }: TrafficTimelineProps) {
+  const formatBandwidth = () => {
+    if (!bandwidth) return "Loading...";
+    return `${bandwidth.total_mb.toFixed(2)} MB`;
+  }
 
   return (
     <Card className="p-0 rounded-0">
-      <CardHeader className="flex flex-col items-stretch border-b-2 rounded-0 p-0 sm:flex-row">
-        <div className="flex flex-1 flex-col justify-center gap-1 px-4 pt-4 pb-4 ">
+      <CardHeader className="flex flex-col gap-4 border-b-2 rounded-0 p-0 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-1 flex-col justify-center gap-1 px-4 pt-4 pb-4">
           <CardTitle>Traffic Timeline</CardTitle>
+          <CardDescription>Real-time network packets per second and bandwidth.</CardDescription>
+        </div>
 
-          <CardDescription>
-            Real-time network activity over the
-            last 15 minutes
-          </CardDescription>
+        <div className="flex flex-col gap-3 border-t border-border px-4 pb-4 pt-2 sm:border-t-0 sm:border-l sm:px-6 sm:pt-4 sm:pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-8">
+              <p className="text-sm font-medium text-muted-foreground">Bandwidth</p>
+              <p className="text-2xl font-bold">{formatBandwidth()}</p>
+          </div>
         </div>
       </CardHeader>
 
@@ -116,7 +79,7 @@ export function TrafficTimeline() {
         >
           <LineChart
             accessibilityLayer
-            data={chartData}
+            data={data}
             margin={{
               left: 12,
               right: 12,
@@ -138,7 +101,7 @@ export function TrafficTimeline() {
             />
             <Line
               type="monotone"
-              dataKey="packets"
+              dataKey="pps"
               stroke="var(--chart-1)"
               strokeWidth={2}
               dot={false}

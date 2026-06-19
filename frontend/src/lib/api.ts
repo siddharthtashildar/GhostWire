@@ -82,6 +82,10 @@ export async function getBandwidth() {
   return fetchJson(`/stats/bandwidth`);
 }
 
+export async function getRecords(limit: number = 50, offset: number = 0) {
+  return fetchJson(`/records?limit=${limit}&offset=${offset}`);
+}
+
 export async function getSummary(topN: number = 5) {
   return fetchJson(`/stats/summary?top_n=${topN}`);
 }

@@ -1,17 +1,34 @@
+"use client"
 
-import { Button } from "@/components/ui/button";
-import { House } from "lucide-react";
-import { Noto_Sans_Bassa_Vah } from "next/font/google";
-import Image from "next/image";
+import { useState } from "react";
 import { Navbar } from "@/components/Navbar";
 import Dashboard from "./pages/dashboard";
+import { LivePacketFeed } from "@/components/livePacketFeed";
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState("dashboard");
+
   return (
     <div className="">
-      <Navbar />
+      <Navbar activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="">
-          <Dashboard />
+        {activeTab === "dashboard" && <Dashboard />}
+        {activeTab === "radio" && <LivePacketFeed />}
+        {activeTab === "shield" && (
+          <div className="p-8 text-center text-muted-foreground">
+            Shield view not implemented yet.
+          </div>
+        )}
+        {activeTab === "arrows" && (
+          <div className="p-8 text-center text-muted-foreground">
+            Traffic analytics coming soon.
+          </div>
+        )}
+        {activeTab === "settings" && (
+          <div className="p-8 text-center text-muted-foreground">
+            Settings will be available here.
+          </div>
+        )}
       </main>
     </div>
   );

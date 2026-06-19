@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Holtwood_One_SC } from "next/font/google";
 import { Button } from "./ui/button";
-import { ArrowUpDown, Earth, House, LayoutDashboard, Radio, Settings, Shield } from "lucide-react";
+import { ArrowUpDown, LayoutDashboard, Radio, Settings, Shield } from "lucide-react";
 import {
     Avatar,
     AvatarBadge,
@@ -13,7 +12,12 @@ import {
 import { ModeToggle } from "./toggleTheme";
 import { getCaptureStatus, startCapture, stopCapture } from "@/lib/api";
 
-function Navbar() {
+interface NavbarProps {
+    activeTab: string;
+    onTabChange: (tab: string) => void;
+}
+
+function Navbar({ activeTab, onTabChange }: NavbarProps) {
     const [isCaptureRunning, setIsCaptureRunning] = useState(false);
     const [isToggleLoading, setIsToggleLoading] = useState(false);
 
@@ -63,20 +67,20 @@ function Navbar() {
 
             </div>
             <div className="text-lg font-bold flex items-center gap-4">
-                <Button variant="outline" className="h-12 w-12" >
+<Button variant={activeTab === "dashboard" ? "secondary" : "outline"} className="h-12 w-12" onClick={() => onTabChange("dashboard")}> 
                     <LayoutDashboard className=" h-full w-full" />
                 </Button>
-                <Button variant="outline" className="h-12 w-12" >
+                <Button variant={activeTab === "radio" ? "secondary" : "outline"} className="h-12 w-12" onClick={() => onTabChange("radio")}> 
                     <Radio className=" h-full w-full" />
                 </Button>
-                <Button variant="outline" className="h-12 w-12" >
+                <Button variant={activeTab === "shield" ? "secondary" : "outline"} className="h-12 w-12" onClick={() => onTabChange("shield")}> 
                     <Shield className=" h-full w-full" />
                 </Button>
-                <Button variant="outline" className="h-12 w-12" >
+                <Button variant={activeTab === "arrows" ? "secondary" : "outline"} className="h-12 w-12" onClick={() => onTabChange("arrows")}> 
                     <ArrowUpDown className=" h-full w-full" />
                 </Button>
-                <Button variant="outline" className="h-12 w-12" >
-                    <Earth className=" h-full w-full" />
+                <Button variant={activeTab === "settings" ? "secondary" : "outline"} className="h-12 w-12" onClick={() => onTabChange("settings")}> 
+                    <Settings className=" h-full w-full" />
                 </Button>
 
             </div>
@@ -84,17 +88,13 @@ function Navbar() {
                 <Button
                     variant={isCaptureRunning ? "destructive" : "secondary"}
                     size="sm"
-                    className="h-10"
+                    className="h-10 px-4"
                     onClick={handleToggleCapture}
                     disabled={isToggleLoading}
                 >
                     {isCaptureRunning ? "Stop Capture" : "Start Capture"}
                 </Button>
                 <ModeToggle />
-                <Button variant="outline" className="h-10 w-10 rounded-full" >
-                    <Settings className=" h-full w-full" />
-
-                </Button>
                 <Avatar>
                     <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
                     <AvatarFallback>CN</AvatarFallback>
