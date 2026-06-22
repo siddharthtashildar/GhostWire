@@ -7,11 +7,16 @@ from pydantic import BaseModel
 from typing import Optional
 import threading
 
+import time
+from ml.collector import save_snapshot
+
+
 from packet_capture.analyzer import PacketAnalyzer
 from packet_capture.sniffer import PacketSniffer
 from packet_capture.statistics import NetworkStatistics
 
 from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="GhostWire", version="1.0.0")
 
@@ -29,6 +34,8 @@ app.add_middleware(
 analyzer = PacketAnalyzer()
 current_sniffer: PacketSniffer | None = None
 capture_lock = threading.Lock()
+last_packet_count = 0
+last_collection_time = time.time()
 
 
 # ── Request / Response models ──────────────────────────────────────────────
@@ -182,3 +189,128 @@ def health():
         "is_capturing": is_capturing,
         "packets_so_far": analyzer.get_packet_count(),
     }
+
+
+
+
+def generate_ml_snapshot():
+    global last_packet_count
+    global last_collection_time
+
+    window_seconds = 60
+
+    records = analyzer.get_records_in_timerange(
+        time.time() - window_seconds,
+        time.time()
+    )
+
+    total_packets = len(records)
+
+    current_time = time.time()
+
+    elapsed = current_time - last_collection_time
+
+    pps = 0
+
+    pps = round(
+        total_packets / window_seconds,
+        2
+    )
+
+    last_packet_count = total_packets
+    last_collection_time = current_time
+
+    if total_packets == 0:
+        return {
+            "packet_count": 0,
+            "pps": 0,
+            "unique_ips": 0,
+            "unique_ports": 0,
+            "tcp_ratio": 0,
+            "udp_ratio": 0,
+            "icmp_ratio": 0,
+            "avg_packet_size": 0,
+        }
+
+    unique_ips = len(
+        {r.src_ip for r in records}
+        |
+        {r.dst_ip for r in records}
+    )
+
+    unique_ports = len(
+        {
+            r.src_port
+            for r in records
+            if r.src_port is not None
+        }
+        |
+        {
+            r.dst_port
+            for r in records
+            if r.dst_port is not None
+        }
+    )
+
+    tcp_count = sum(
+        1
+        for r in records
+        if r.protocol_name == "TCP"
+    )
+
+    udp_count = sum(
+        1
+        for r in records
+        if r.protocol_name == "UDP"
+    )
+
+    icmp_count = sum(
+        1
+        for r in records
+        if r.protocol_name == "ICMP"
+    )
+
+    avg_packet_size = (
+        sum(r.length for r in records)
+        / total_packets
+    )
+
+    return {
+        "packet_count": total_packets,
+        "pps": round(pps, 2),
+        "unique_ips": unique_ips,
+        "unique_ports": unique_ports,
+        "tcp_ratio": round(tcp_count / total_packets, 4),
+        "udp_ratio": round(udp_count / total_packets, 4),
+        "icmp_ratio": round(icmp_count / total_packets, 4),
+        "avg_packet_size": round(avg_packet_size, 2),
+    }
+
+@app.get("/ml/snapshot")
+def ml_snapshot():
+    return generate_ml_snapshot()
+
+
+def ml_collector():
+    while True:
+
+        if analyzer.get_packet_count() > 20:
+
+            snapshot = generate_ml_snapshot()
+
+            save_snapshot(snapshot)
+
+        time.sleep(5)
+
+
+@app.on_event("startup")
+def start_ml_collector():
+
+    thread = threading.Thread(
+        target=ml_collector,
+        daemon=True,
+    )
+
+    thread.start()
+
+    print("[ML] Background collector started")
