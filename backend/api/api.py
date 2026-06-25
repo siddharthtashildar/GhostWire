@@ -230,6 +230,8 @@ def generate_ml_snapshot():
             "udp_ratio": 0,
             "icmp_ratio": 0,
             "avg_packet_size": 0,
+            "dns_ratio": 0,
+            "https_ratio": 0,
         }
 
     unique_ips = len(
@@ -275,6 +277,29 @@ def generate_ml_snapshot():
         / total_packets
     )
 
+    dns_packets = sum(
+    1 for r in records
+    if r.src_port == 53
+    or r.dst_port == 53
+    )
+
+
+    dns_ratio = dns_packets / total_packets
+    https_packets = sum(
+        1 for r in records
+        if r.src_port == 443
+        or r.dst_port == 443
+    )
+
+    https_ratio = https_packets / total_packets
+
+    print(
+    "Window:",
+    len(records),
+    "Stored:",
+    analyzer.get_packet_count()
+    )
+    
     return {
         "packet_count": total_packets,
         "pps": round(pps, 2),
@@ -284,6 +309,8 @@ def generate_ml_snapshot():
         "udp_ratio": round(udp_count / total_packets, 4),
         "icmp_ratio": round(icmp_count / total_packets, 4),
         "avg_packet_size": round(avg_packet_size, 2),
+        "dns_ratio": round(dns_ratio, 4),
+        "https_ratio": round(https_ratio, 4),
     }
 
 @app.get("/ml/snapshot")

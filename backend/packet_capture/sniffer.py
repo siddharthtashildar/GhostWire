@@ -3,6 +3,8 @@ sniffer.py — Packet capture module using Scapy.
 Captures live packets and passes them to the Analyzer.
 """
 
+import time
+
 from scapy.all import AsyncSniffer, wrpcap, rdpcap
 from scapy.layers.inet import IP, TCP, UDP, ICMP
 from .analyzer import PacketAnalyzer
@@ -119,7 +121,7 @@ class PacketSniffer:
 
         ip = packet[IP]
         record = {
-            "timestamp": float(packet.time),
+            "timestamp": float(time.time()),
             "src_ip":    ip.src,
             "dst_ip":    ip.dst,
             "protocol":  ip.proto,       # numeric: 6=TCP, 17=UDP, 1=ICMP …

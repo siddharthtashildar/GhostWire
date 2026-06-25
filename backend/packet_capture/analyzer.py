@@ -17,7 +17,7 @@ from typing import List, Optional
 # PacketRecord — one captured packet
 # ---------------------------------------------------------------------------
 
-MAX_RECORDS = 10000
+
 
 @dataclass
 class PacketRecord:
@@ -135,8 +135,8 @@ class PacketAnalyzer:
             timestamp     = data.get("timestamp", time.time()),
         )
         self._records.append(record)
-        if len(self._records) > MAX_RECORDS:
-            self._records.pop(0)
+        # if len(self._records) > MAX_RECORDS:
+        #     self._records.pop(0)
         return record
 
     # ------------------------------------------------------------------
