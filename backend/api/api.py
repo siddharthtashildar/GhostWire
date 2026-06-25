@@ -232,6 +232,7 @@ def generate_ml_snapshot():
             "avg_packet_size": 0,
             "dns_ratio": 0,
             "https_ratio": 0,
+            "syn_ratio": 0,
         }
 
     unique_ips = len(
@@ -293,6 +294,14 @@ def generate_ml_snapshot():
 
     https_ratio = https_packets / total_packets
 
+    
+    syn_packets = sum(
+        1
+        for r in records
+        if r.flags and "S" in r.flags
+    )
+    syn_ratio = syn_packets / total_packets
+
     print(
     "Window:",
     len(records),
@@ -311,6 +320,7 @@ def generate_ml_snapshot():
         "avg_packet_size": round(avg_packet_size, 2),
         "dns_ratio": round(dns_ratio, 4),
         "https_ratio": round(https_ratio, 4),
+        "syn_ratio": round(syn_ratio, 4),
     }
 
 @app.get("/ml/snapshot")
