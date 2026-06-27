@@ -9,8 +9,9 @@ import threading
 
 import time
 from ml.collector import save_snapshot
+from ml.predict import predict
 
-
+from collections import deque, Counter
 from packet_capture.analyzer import PacketAnalyzer
 from packet_capture.sniffer import PacketSniffer
 from packet_capture.statistics import NetworkStatistics
@@ -36,6 +37,7 @@ current_sniffer: PacketSniffer | None = None
 capture_lock = threading.Lock()
 last_packet_count = 0
 last_collection_time = time.time()
+prediction_history = deque(maxlen=5)
 
 
 # ── Request / Response models ──────────────────────────────────────────────
@@ -351,3 +353,24 @@ def start_ml_collector():
     thread.start()
 
     print("[ML] Background collector started")
+
+@app.get("/ml/predict")
+def ml_predict():
+
+    snapshot = generate_ml_snapshot()
+
+    result = predict(snapshot)
+
+    prediction_history.append(
+        result["activity"]
+    )
+
+    activity = Counter(
+        prediction_history
+    ).most_common(1)[0][0]
+
+    return {
+        "activity": activity,
+        "confidence": result["confidence"],
+        "window": "60 seconds"
+    }

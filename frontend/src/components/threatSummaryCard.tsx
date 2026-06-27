@@ -8,11 +8,32 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
+import { useEffect, useState } from "react"
+
 export function AIThreatSummary() {
+  const [aiData, setAiData] = useState({
+    "activity": "No data available",
+    "confidence": 0
+})
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const res = await fetch(
+        "http://localhost:8000/ml/predict"
+      )
+
+      const data = await res.json()
+
+      setAiData(data)
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>AI Threat Summary</CardTitle>
+        <CardTitle>AI Summary</CardTitle>
 
         <CardDescription>
           Machine learning analysis of current
@@ -23,12 +44,12 @@ export function AIThreatSummary() {
       <CardContent className="space-y-4">
         <div className="rounded-lg border p-4">
           <p className="text-lg font-semibold">
-            Network Behavior Normal
+            
+            Current Activity:  {aiData.activity || "No data available"}
           </p>
 
           <p className="text-muted-foreground text-sm mt-1">
-            No significant anomalies detected in
-            the last 15 minutes.
+            Confidence: {aiData.confidence || "N/A"}%
           </p>
         </div>
 
