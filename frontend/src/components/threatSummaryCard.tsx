@@ -10,25 +10,15 @@ import {
 
 import { useEffect, useState } from "react"
 
-export function AIThreatSummary() {
-  const [aiData, setAiData] = useState({
-    "activity": "No data available",
-    "confidence": 0
-})
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      const res = await fetch(
-        "http://localhost:8000/ml/predict"
-      )
-
-      const data = await res.json()
-
-      setAiData(data)
-    }, 5000)
-
-    return () => clearInterval(interval)
-  }, [])
+export function AIThreatSummary({
+    activity,
+    confidence,
+    threat_score,
+}: {
+    activity: string;
+    confidence: number;
+    threat_score: number;
+}) {
 
   return (
     <Card>
@@ -45,11 +35,11 @@ export function AIThreatSummary() {
         <div className="rounded-lg border p-4">
           <p className="text-lg font-semibold">
             
-            Current Activity:  {aiData.activity || "No data available"}
+            Current Activity:  {activity || "No data available"}
           </p>
 
           <p className="text-muted-foreground text-sm mt-1">
-            Confidence: {aiData.confidence || "N/A"}%
+            Confidence: {confidence || "N/A"}%
           </p>
         </div>
 
@@ -58,7 +48,7 @@ export function AIThreatSummary() {
             <span>Threat Score</span>
 
             <span className="font-medium text-green-500">
-              23 / 100
+              {threat_score || "N/A"} / 100
             </span>
           </div>
 
@@ -71,7 +61,7 @@ export function AIThreatSummary() {
           <div className="flex justify-between">
             <span>Confidence</span>
 
-            <span>97%</span>
+            <span>{confidence || "N/A"}%</span>
           </div>
         </div>
 

@@ -10,6 +10,7 @@ import threading
 import time
 from ml.collector import save_snapshot
 from ml.predict import predict
+from ml.anomaly import predict_anomaly
 
 from collections import deque, Counter
 from packet_capture.analyzer import PacketAnalyzer
@@ -354,23 +355,18 @@ def start_ml_collector():
 
     print("[ML] Background collector started")
 
-@app.get("/ml/predict")
-def ml_predict():
-
+@app.get("/ml/analysis")
+def ml_analysis():
     snapshot = generate_ml_snapshot()
 
-    result = predict(snapshot)
+    activity = predict(snapshot)
 
-    prediction_history.append(
-        result["activity"]
-    )
-
-    activity = Counter(
-        prediction_history
-    ).most_common(1)[0][0]
+    threat = predict_anomaly(snapshot)
 
     return {
-        "activity": activity,
-        "confidence": result["confidence"],
-        "window": "60 seconds"
+        "activity": activity["activity"],
+        "confidence": activity["confidence"],
+        "threat_score": threat["threat_score"],
+        "anomaly": threat["anomaly"],
+        "score": threat["score"],
     }

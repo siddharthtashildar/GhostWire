@@ -20,39 +20,46 @@ import {
   ChartContainer,
   type ChartConfig,
 } from "@/components/ui/chart"
+import { useEffect, useState } from "react"
 
-const threatScore = 23
 
-const chartData = [
-  {
-    name: "threat",
-    score: threatScore,
-    fill:
-      threatScore > 70
-        ? "#ef4444"
-        : threatScore > 30
-        ? "#f59e0b"
-        : "#22c55e",
-  },
-]
 
-const chartConfig = {
-  score: {
-    label: "Threat Score",
-  },
-  threat: {
-    label: "Threat",
-    color: "#22c55e",
-  },
-} satisfies ChartConfig
+export function ThreatScoreCard({ ThreatScore }: { ThreatScore: number }) {
 
-function getThreatStatus(score: number) {
-  if (score > 70) return "High Risk"
-  if (score > 30) return "Suspicious"
-  return "Secure"
-}
 
-export function ThreatScoreCard() {
+
+  
+
+  const chartData = [
+    {
+      name: "threat",
+      score: ThreatScore,
+      fill:
+        ThreatScore > 70
+          ? "#ef4444"
+          : ThreatScore > 30
+            ? "#f59e0b"
+            : "#22c55e",
+    },
+  ]
+
+  const chartConfig = {
+    score: {
+      label: "Threat Score",
+    },
+    threat: {
+      label: "Threat",
+      color: "#22c55e",
+    },
+  } satisfies ChartConfig
+
+  function getThreatStatus(score: number) {
+    if (score > 70) return "High Risk"
+    if (score > 30) return "Suspicious"
+    return "Secure"
+  }
+
+
   return (
     <Card className="flex flex-col">
       <CardHeader className="items-center pb-0">
@@ -113,7 +120,7 @@ export function ThreatScoreCard() {
                           y={viewBox.cy}
                           className="fill-foreground text-5xl font-bold"
                         >
-                          {threatScore}
+                          {ThreatScore}
                         </tspan>
 
                         <tspan
@@ -134,7 +141,7 @@ export function ThreatScoreCard() {
 
         <div className="mt-4 text-center">
           <p className="text-lg font-semibold">
-            {getThreatStatus(threatScore)}
+            {getThreatStatus(ThreatScore)}
           </p>
 
           <p className="text-muted-foreground text-sm">
