@@ -8,6 +8,7 @@ from typing import Optional
 import threading
 
 import time
+from ml.summary import generate_summary
 from ml.collector import save_snapshot
 from ml.predict import predict
 from ml.anomaly import predict_anomaly
@@ -363,10 +364,19 @@ def ml_analysis():
 
     threat = predict_anomaly(snapshot)
 
+    summary = generate_summary(
+        activity["activity"],
+        activity["confidence"],
+        threat["threat_score"],
+        snapshot,
+    )
+
+
     return {
         "activity": activity["activity"],
         "confidence": activity["confidence"],
         "threat_score": threat["threat_score"],
         "anomaly": threat["anomaly"],
         "score": threat["score"],
+        "summary": summary,
     }

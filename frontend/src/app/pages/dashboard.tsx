@@ -9,6 +9,7 @@ import { TrafficTimeline } from "@/components/traffic-Timeline";
 
 import { useEffect, useState } from "react";
 import { getPacketCount, getTopIps, getBandwidth } from "../../lib/api";
+import { useAI } from "@/lib/func";
 
 interface BandwidthStats {
     total_bytes: number;
@@ -19,34 +20,7 @@ interface BandwidthStats {
     min_packet_size: number;
 }
 
-export function useAI() {
-    const [data, setData] = useState({
-        activity: "No data available",
-        confidence: 0,
-        threat_score: 0,
-    });
 
-    useEffect(() => {
-        const fetchData = async () => {
-            const res = await fetch(
-                "http://localhost:8000/ml/analysis"
-            )
-
-            setData(await res.json())
-        }
-
-        fetchData()
-
-        const interval = setInterval(
-            fetchData,
-            5000
-        )
-
-        return () => clearInterval(interval)
-    }, [])
-
-    return data
-}
 
 function Dashboard() {
     const [packetCount, setPacketCount] = useState(0);
@@ -56,6 +30,8 @@ function Dashboard() {
     const [timelineData, setTimelineData] = useState<{ time: string; pps: number }[]>([]);
 
     const ai = useAI()
+
+
 
     useEffect(() => {
         let mounted = true;
@@ -119,6 +95,8 @@ function Dashboard() {
         };
     }, []);
 
+
+
     return (
         <div className="py-0">
             <div className="flex  items-top justify-between h-3/4 px-16 py-4 w-full gap-4">
@@ -174,6 +152,10 @@ function Dashboard() {
                         activity={ai?.activity || "No data available"}
                         confidence={ai?.confidence || 0 }
                         threat_score={ai?.threat_score || 0}
+                        summary={{
+                            status: ai?.summary.status || "No status available",
+                            findings: ai?.summary.findings || ["No findings available"],
+                        }}
                     />
                 </div>
             </div>

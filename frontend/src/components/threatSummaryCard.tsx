@@ -14,10 +14,15 @@ export function AIThreatSummary({
     activity,
     confidence,
     threat_score,
+    summary,
 }: {
     activity: string;
     confidence: number;
     threat_score: number;
+    summary: {
+        status: string;
+        findings: string[];
+    };
 }) {
 
   return (
@@ -71,19 +76,15 @@ export function AIThreatSummary({
           </p>
 
           <ul className="mt-2 space-y-1 text-muted-foreground">
-            <li>
-              • HTTPS traffic remains within
-              expected baseline
-            </li>
-
-            <li>
-              • DNS request volume appears normal
-            </li>
-
-            <li>
-              • No suspicious port scanning
-              activity detected
-            </li>
+              {summary.findings.map((item, index) => (
+                  <li
+                      key={index}
+                      className="flex gap-2"
+                  >
+                      <span>•</span>
+                      <span>{item}</span>
+                  </li>
+              ))}
           </ul>
         </div>
       </CardContent>
